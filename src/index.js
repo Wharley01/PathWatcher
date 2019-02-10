@@ -1,17 +1,36 @@
-export default function Watcher(controller) {
+// import config from "PathRoot/project.pconf.json";
+import config from "../../../../Path/project.pconf.json";
+import axios from "axios";
 
+// "http://path.loc/SSE/test/watch?Methods=profile,isLoggedIn&Params=[name=wale%20fgfgfgfg,school=trying%20this%20now]"
+
+export default function Watcher(controller,watch_method = "SSE") {
     if(!controller)
         throw ("Specify Controller to watch");
+    if(watch_method === "WS"){
+        if(!config.WEBSOCKET.host)
+            throw ("Specify WebSocket host in path/pconf.json");
+        if(!config.WEBSOCKET.port)
+            throw ("Specify WebSocket port in path/pconf.json");
+    }
 
+    let parsedUrl = new URL(window.location.href);
+
+
+    this.SSE_url = "";
+    this.watch_method = watch_method;
     this.controller = controller;
-    this.server = "path.loc";
-    this.port = 443;
+    this.SSE_url = `${parsedUrl.protocol}//${parsedUrl.host}/SSE/${controller}`;
+    console.log(this.SSE_url);
+    this.server = config.WEBSOCKET.host;
+    this.port = config.WEBSOCKET.port;
     this.watching = [];
     this.params   = {};
     this.listening = {};
     this.socket = null;
+    this.SSE_instance = "";
     this.onMessageCallback = () => {
-        console.error("Set onMessage() function")
+        // console.error("Set onMessage() function")
     };
     this.onReadyCallback = () => {
         console.log("Set onOpen() function")
@@ -41,22 +60,58 @@ export default function Watcher(controller) {
       return this;
     };
 
-    this.navigate = (params,data = null) => {
+    this.navigate = async (params,data = null) => {
       this.params = params;
       let re_data = {
           data: data,
           type:"navigate",
           params: params | {}
       };
-      if(!this.socket)
+
+      this.params = params;
+
+      if(!this.socket && this.watch_method === "WS")
           throw("Initiate Watcher before you navigate");
-      this.socket.send(JSON.stringify(re_data));
+      if(this.watch_method === "SSE"){
+          try{
+              let nav = await axios.get(buildURL("navigate",data));
+          }catch (e){
+              throw (e.message);
+          }
+          console.log("changing the instance")
+      }else{
+          this.send(JSON.stringify(re_data));
+      }
       return this;
     };
 
-    this.send = (data,func,method = null) => {
+    let buildURL = (action,message) =>{
+        let _URL = `${this.SSE_url}/${action}`;
+        let parsedUrl = new URL(_URL);
+        parsedUrl.searchParams.set("Params",paramsToStr());
+        parsedUrl.searchParams.set("Methods",this.watching.join(","));
+        if(message){
+            parsedUrl.searchParams.set("message",message);
+        }
+        return parsedUrl.toString();
+    };
+
+    this.SSESend = async (data) => {
         try{
-            this.socket.send(data);
+            let fetch = await axios.get(buildURL("message",data))
+        }catch (e){
+            throw (e.message)
+        }
+        return this;
+    };
+
+    this.send = (data,func) => {
+        try{
+            if(this.watch_method === "WS"){
+                this.socket.send(data);
+            }else if(this.watch_method === "SSE"){
+                this.SSESend(data);
+            }
             if(func){
                 func(this);
             }
@@ -91,7 +146,7 @@ export default function Watcher(controller) {
         return this;
     };
 
-    let paramsToStr = () => {
+    const paramsToStr = () => {
         let str = "";
         for(let key in this.params){
             if(str.length > 0)
@@ -101,8 +156,50 @@ export default function Watcher(controller) {
         }
         return str;
     };
-
+    const resetConnection = async () => {
+        try{
+            let reset = await axios.get(buildURL("reset"));
+            return true;
+        }catch (e){
+            throw (e.message);
+        }
+    };
     this.start = () => {
+        if(this.watch_method === "SSE"){
+            this.startSSE();
+        }else{
+            this.startWS();
+        }
+        return this;
+    }
+    this.startSSE = async () => {
+        if (!!window.EventSource) {
+            try{
+                let reset = await axios.get(buildURL("reset"));
+
+                    this.SSE_instance = new EventSource(buildURL("watch"));
+                this.SSE_instance.onopen = () => {
+                   this.onReadyCallback(this);
+
+                    for (let method in this.listening) {
+                        this.SSE_instance.addEventListener(method,(response) => {
+                            let _response = JSON.parse(response.data);
+                            this.listening[method](_response[0],_response[1]);
+                        })
+                    }
+                };
+
+                return true;
+            }catch (e){
+                throw (e.message);
+            }
+
+        }else{
+            throw ("SSE not supported on this device");
+        }
+    };
+
+    this.startWS = () => {
       let tcp_uri = `ws://${this.server}:${this.port}/${this.controller}/Watch=[${this.watching.join(",")}]&Params=[${paramsToStr()}]`;
       try{
           this.socket =  new WebSocket(tcp_uri);
@@ -111,10 +208,10 @@ export default function Watcher(controller) {
               for (let method in _response){
               //    check if there is a listener fr the method already
                   if(this.listening[method]){
-                      this.listening[method](_response[method])
+                      this.listening[method](_response[method][0],_response[method][1])
                   }
               }
-              // this.onMessageCallback(JSON.parse(response));
+              this.onMessageCallback(_response);
           };
           this.socket.onclose = this.onCloseCallback;
           this.socket.onopen = () => {
@@ -126,5 +223,17 @@ export default function Watcher(controller) {
 
       return this;
     };
+
+    this.close = () => {
+        if(this.watch_method === "WS"){
+            this.socket.close();
+        }else if(this.watch_method === "SSE"){
+            this.SSE_instance.close();
+        }
+        return this;
+    };
+
     return this;
-}
+};
+
+

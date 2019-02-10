@@ -13,9 +13,12 @@ const watcher = new Watcher("TestLive")
     //tell watcher to start watching to changes on Server side
 
 
+// watcher.SSESend("HELLO WORLD");
+// watcher.navigate({"school":"College"});
 
 watcher.onReady((watcher) => {
     //this will execute when watcher has started and now watching
+
 
     watcher.listenTo("isLogin",(res) => {
         /*
@@ -25,25 +28,25 @@ watcher.onReady((watcher) => {
         * `res` is the response data from the method (isLogin)
 
          */
-
+        // alert("isLoggin Changes");
         console.log("isLogin changed");
         console.log({"islogin-response": res});
     });
 
-    watcher.listenTo("profile",(res) => {
+    watcher.listenTo("profile",(res,prevRes) => {
         //this listen to changes in profile methods
         console.log("profile changed");
         console.log({"profile": res});
     });
-    document.querySelector("#sender").addEventListener("submit", (e) => {
-        e.preventDefault();
-        watcher.send(document.querySelector("#text_input").value);
-        document.querySelector("#text_input").value = "";
-    });
-    document.querySelector("#navigate").addEventListener("click", (e) => {
-        e.preventDefault();
-        watcher.navigate({"school":"College"});
-    });
+
+    // document.querySelector("#sender").addEventListener("submit", (e) => {
+    //     e.preventDefault();
+    //     watcher.send(document.querySelector("#text_input").value);
+    //     document.querySelector("#text_input").value = "";
+    // });
+    // document.querySelector("#navigate").addEventListener("click", (e) => {
+    //     e.preventDefault();
+    // });
 
         //this will forces changes to emit in all methods,
 });
