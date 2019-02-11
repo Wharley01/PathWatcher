@@ -2,12 +2,13 @@
 import config from "../../../../Path/project.pconf.json";
 import axios from "axios";
 
-// "http://path.loc/SSE/test/watch?Methods=profile,isLoggedIn&Params=[name=wale%20fgfgfgfg,school=trying%20this%20now]"
 
-export default function Watcher(controller,watch_method = "SSE") {
+export default function Watcher(controller) {
+    this.watch_method = config.PROJECT.watch_method || "WS";
+    console.log(this.watch_method)
     if(!controller)
         throw ("Specify Controller to watch");
-    if(watch_method === "WS"){
+    if(this.watch_method === "WS"){
         if(!config.WEBSOCKET.host)
             throw ("Specify WebSocket host in path/pconf.json");
         if(!config.WEBSOCKET.port)
@@ -18,7 +19,6 @@ export default function Watcher(controller,watch_method = "SSE") {
 
 
     this.SSE_url = "";
-    this.watch_method = watch_method;
     this.controller = controller;
     this.SSE_url = `${parsedUrl.protocol}//${parsedUrl.host}/SSE/${controller}`;
     console.log(this.SSE_url);
@@ -51,38 +51,38 @@ export default function Watcher(controller,watch_method = "SSE") {
     };
 
     this.watch = (...methods) => {
-    this.watching = [...this.watching , ...methods];
-    return this;
+        this.watching = [...this.watching , ...methods];
+        return this;
     };
 
     this.setParams = (params) => {
-      this.params = params;
-      return this;
+        this.params = params;
+        return this;
     };
 
     this.navigate = async (params,data = null) => {
-      this.params = params;
-      let re_data = {
-          data: data,
-          type:"navigate",
-          params: params | {}
-      };
+        this.params = params;
+        let re_data = {
+            data: data,
+            type:"navigate",
+            params: params | {}
+        };
 
-      this.params = params;
+        this.params = params;
 
-      if(!this.socket && this.watch_method === "WS")
-          throw("Initiate Watcher before you navigate");
-      if(this.watch_method === "SSE"){
-          try{
-              let nav = await axios.get(buildURL("navigate",data));
-          }catch (e){
-              throw (e.message);
-          }
-          console.log("changing the instance")
-      }else{
-          this.send(JSON.stringify(re_data));
-      }
-      return this;
+        if(!this.socket && this.watch_method === "WS")
+            throw("Initiate Watcher before you navigate");
+        if(this.watch_method === "SSE"){
+            try{
+                let nav = await axios.get(buildURL("navigate",data));
+            }catch (e){
+                throw (e.message);
+            }
+            console.log("changing the instance")
+        }else if(this.watch_method == "WS"){
+            this.send(JSON.stringify(re_data));
+        }
+        return this;
     };
 
     let buildURL = (action,message) =>{
@@ -167,7 +167,7 @@ export default function Watcher(controller,watch_method = "SSE") {
     this.start = () => {
         if(this.watch_method === "SSE"){
             this.startSSE();
-        }else{
+        }else if(this.watch_method === "WS"){
             this.startWS();
         }
         return this;
@@ -176,19 +176,18 @@ export default function Watcher(controller,watch_method = "SSE") {
         if (!!window.EventSource) {
             try{
                 let reset = await axios.get(buildURL("reset"));
+                this.onReadyCallback(this);
+                this.SSE_instance = new EventSource(buildURL("watch"));
+                console.log(this.listening);
 
-                    this.SSE_instance = new EventSource(buildURL("watch"));
-                this.SSE_instance.onopen = () => {
-                   this.onReadyCallback(this);
-
-                    for (let method in this.listening) {
-                        this.SSE_instance.addEventListener(method,(response) => {
-                            let _response = JSON.parse(response.data);
-                            this.listening[method](_response[0],_response[1]);
-                        })
-                    }
-                };
-
+                for (let method in this.listening) {
+                    console.log(`Watching ${method} for changes`);
+                    this.SSE_instance.addEventListener(method,(response) => {
+                        let _response = JSON.parse(response.data);
+                        this.listening[method](_response[0],_response[1]);
+                    })
+                    console.log(`attaching event to: ${method}`);
+                }
                 return true;
             }catch (e){
                 throw (e.message);
@@ -200,28 +199,28 @@ export default function Watcher(controller,watch_method = "SSE") {
     };
 
     this.startWS = () => {
-      let tcp_uri = `ws://${this.server}:${this.port}/${this.controller}/Watch=[${this.watching.join(",")}]&Params=[${paramsToStr()}]`;
-      try{
-          this.socket =  new WebSocket(tcp_uri);
-          this.socket.onmessage = (response) => {
-              let _response = JSON.parse(response.data);
-              for (let method in _response){
-              //    check if there is a listener fr the method already
-                  if(this.listening[method]){
-                      this.listening[method](_response[method][0],_response[method][1])
-                  }
-              }
-              this.onMessageCallback(_response);
-          };
-          this.socket.onclose = this.onCloseCallback;
-          this.socket.onopen = () => {
-              this.onReadyCallback(this);
-          };
-      }catch (error){
-          this.onErrorCallback(error);
-      }
+        let tcp_uri = `ws://${this.server}:${this.port}/${this.controller}/Watch=[${this.watching.join(",")}]&Params=[${paramsToStr()}]`;
+        try{
+            this.socket =  new WebSocket(tcp_uri);
+            this.socket.onmessage = (response) => {
+                let _response = JSON.parse(response.data);
+                for (let method in _response){
+                    //    check if there is a listener fr the method already
+                    if(this.listening[method]){
+                        this.listening[method](_response[method][0],_response[method][1])
+                    }
+                }
+                this.onMessageCallback(_response);
+            };
+            this.socket.onclose = this.onCloseCallback;
+            this.socket.onopen = () => {
+                this.onReadyCallback(this);
+            };
+        }catch (error){
+            this.onErrorCallback(error);
+        }
 
-      return this;
+        return this;
     };
 
     this.close = () => {

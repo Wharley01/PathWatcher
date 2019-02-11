@@ -1,6 +1,6 @@
 {
   "name": "@wharley01/path-watcher",
-  "version": "1.1.5",
+  "version": "1.1.0",
   "description": "Live Controller Watcher for CLient Side",
   "main": "src/index.js",
   "scripts": {
