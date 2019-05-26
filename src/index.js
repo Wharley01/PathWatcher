@@ -1,9 +1,11 @@
-// import config from "PathRoot/project.pconf.json";
-import config from "../../../../path/project.pconf.json";
+'use strict';
+
+import config from "../path/project.pconf.json";
+// import config from "../../../../path/project.pconf.json";
 import axios from "axios";
 
 export default function Watcher(controller) {
-  this.watch_method = config.PROJECT.watch_method || "WS";
+  this.watch_method = config.WATCHER.method || "WS";
   console.log(this.watch_method);
   if (!controller) throw "Specify Controller to watch";
   if (this.watch_method === "WS") {
@@ -19,8 +21,8 @@ export default function Watcher(controller) {
   this.controller = controller;
   this.SSE_url = `${parsedUrl.protocol}//${parsedUrl.host}/SSE/${controller}`;
   console.log(this.SSE_url);
-  this.server = config.WEBSOCKET.host;
-  this.port = config.WEBSOCKET.port;
+  this.server = config.WATCHER.WEBSOCKET.host;
+  this.port = config.WATCHER.WEBSOCKET.port;
   this.watching = [];
   this.params = {};
   this.listening = {};
