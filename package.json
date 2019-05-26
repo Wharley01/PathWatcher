@@ -1,6 +1,6 @@
 {
   "name": "@__path/watcher",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Live Controller Watcher for CLient Side",
   "main": "src/index.js",
   "scripts": {
