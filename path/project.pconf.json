@@ -3,27 +3,28 @@
     "host": "localhost",
     "user": "root",
     "password": "",
-    "name": "test"
+    "name": "trademint24"
   },
   "FILE": {
     "max_size": 5242880
   },
   "PROJECT": {
-    "name": "Path",
+    "name": "Macroware",
     "status": "production",
     "version": "1.0",
     "directory": "",
+    "recaptcha_secrete_key": "6LcZbqoUAAAAACOhGaWTyG3haIiUyI2weZs8Wq0N",
     "host": "localhost",
     "port": 3000,
     "protocol": "http",
-    "server": "http://macroware-vue.loc",
+    "server": "http://trademint24.loc",
     "_comment": "SSE/WS can be value of watch_method",
     "watch_method": "WS"
   },
   "WATCHER": {
     "method": "WS",
     "WEBSOCKET": {
-      "host": "macroware-vue.loc",
+      "host": "trademint24.loc",
       "port": 443,
       "scheme": "SSL"
     }
@@ -39,8 +40,8 @@
       "charset": "UTF-8"
     },
     "ADMIN_INFO": {
-      "email": "admin@__path.com",
-      "name": "Path Admin"
+      "email": "admin@trademint24.com",
+      "name": "Trademint Support Admin"
     }
   }
 }

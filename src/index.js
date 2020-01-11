@@ -1,7 +1,7 @@
 'use strict';
 
-import config from "../path/project.pconf.json";
-// import config from "../../../../path/project.pconf.json";
+// import config from "../path/project.pconf.json";
+import config from "../../../../path/project.pconf.json";
 import axios from "axios";
 
 export default function Watcher(controller) {
@@ -9,21 +9,18 @@ export default function Watcher(controller) {
   console.log(this.watch_method);
   if (!controller) throw "Specify Controller to watch";
   if (this.watch_method === "WS") {
-    if (!config.WEBSOCKET.host)
+    if (!config.WATCHER.WEBSOCKET.host)
       throw "Specify WebSocket host in path/pconf.json";
-    if (!config.WEBSOCKET.port)
+    if (!config.WATCHER.WEBSOCKET.port)
       throw "Specify WebSocket port in path/pconf.json";
   }
 
-  let parsedUrl = new URL(window.location.href);
 
-  this.SSE_url = "";
   this.controller = controller;
-  this.SSE_url = `${parsedUrl.protocol}//${parsedUrl.host}/SSE/${controller}`;
-  console.log(this.SSE_url);
   this.server = config.WATCHER.WEBSOCKET.host;
   this.port = config.WATCHER.WEBSOCKET.port;
   this.watching = [];
+  this.host = null;
   this.params = {};
   this.listening = {};
   this.socket = null;
@@ -53,6 +50,16 @@ export default function Watcher(controller) {
     this.watching = [...this.watching, ...methods];
     return this;
   };
+
+  this.setHost = host => {
+    this.host = host;
+    return this;
+  }
+
+  this.getSSE_URL = () => {
+    let parsedUrl = new URL(this.host || window.location.href);
+    return `${parsedUrl.protocol}//${parsedUrl.host}/SSE/${controller}`
+  }
 
   this.setParams = params => {
     this.params = params;
@@ -85,7 +92,7 @@ export default function Watcher(controller) {
   };
 
   let buildURL = (action, message) => {
-    let _URL = `${this.SSE_url}/${action}`;
+    let _URL = `${this.getSSE_URL()}/${action}`;
     let parsedUrl = new URL(_URL);
     parsedUrl.searchParams.set("Params", paramsToStr());
     parsedUrl.searchParams.set("Methods", this.watching.join(","));
@@ -208,7 +215,7 @@ export default function Watcher(controller) {
   this.startWS = () => {
     let tcp_uri = `ws://${this.server}:${this.port}/${
       this.controller
-    }/Watch=[${this.watching.join(",")}]&Params=[${paramsToStr()}]`;
+      }/Watch=[${this.watching.join(",")}]&Params=[${paramsToStr()}]`;
     try {
       this.socket = new WebSocket(tcp_uri);
       this.socket.onmessage = response => {
